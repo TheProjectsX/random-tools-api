@@ -1,5 +1,9 @@
 from flask import Flask, request
 import requests
+import qrcode
+import io
+import base64
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -7,6 +11,8 @@ app = Flask(__name__)
 def home():
     return "Hello"
 
+
+# URL Shortener
 @app.route("/url/shorten", methods=["POST"])
 def shortenUrl():
     longUrl = request.json.get("longUrl")
@@ -57,6 +63,30 @@ def lookupUrl():
         return {"success": False, "message": response.get("errormessage")}
 
     return {"success": True, "shortUrl": original}
+
+
+# QRCode Generator
+@app.route("/qrcode/gen", methods=["POST"])
+def genQrCode():
+    text = request.json.get("text")
+    if (text is None):
+        return {"success": False, "message": "No data provided"}
+
+    try:
+        
+        img = qrcode.make(text)
+
+        img_io = io.BytesIO()
+        img.save(img_io)
+        img_io.seek(0)
+
+        base64_data = base64.b64encode(img_io.getvalue()).decode('utf-8')
+        img_data_url = f"data:image/png;base64,{base64_data}"
+
+        return {"success": True, "img": img_data_url}
+    except Exception as e:
+        print(str(e))
+        return {"success": False, "message": "Some error Occurred"}
 
 
 
