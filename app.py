@@ -5,6 +5,7 @@ from pyzbar.pyzbar import decode
 import io
 import base64
 from PIL import Image
+import json
 
 
 app = Flask(__name__)
@@ -118,6 +119,42 @@ def decQrCode():
         return {"success": False, "message": "No QR Code Found!"}
     
     return {"success": True, "data": decodedData}
+
+# JSON Formatter
+@app.route("/json-formatter", methods=["POST"])
+def jsonFormatter():
+    jsonStrData = request.json.get("json")
+    indent = request.json.get("indent", 4)
+    separators = request.json.get("separators", {})
+    sortKeys = request.json.get("sortKeys", False)
+
+    try:
+        indent = int(indent)
+    except Exception as e:
+        indent = 4
+
+    if (jsonStrData is None):
+        return {"success": False, "message": "No JSON Data provided"}
+    
+    jsonData = None
+    try:
+        jsonData = json.loads(jsonStrData)
+    except Exception as e:
+        print(str(e))
+    
+    if (jsonData is None):
+        return {"success": False, "message": "Invalid JSON Data provided"}
+
+    try:
+        formattedData = json.dumps(jsonData, indent=indent, separators=(separators.get("object", ","), separators.get("value", ": ")), sort_keys=sortKeys)
+    except Exception as e:
+        return {"success": False, "message": "Failed to Format JSON Data"}
+    
+    return {"success": True, "json": formattedData}
+
+
+
+
 
 if (__name__ == "__main__"):
     app.run(debug=True)
