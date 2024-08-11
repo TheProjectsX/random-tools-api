@@ -1,10 +1,10 @@
-from flask import Flask, request
+from flask import Flask, request, send_file
 import requests
 import qrcode
 from pyzbar.pyzbar import decode
 import io
 import base64
-from PIL import Image
+from PIL import Image, ImageDraw
 import json
 import geocoder
 
@@ -98,23 +98,22 @@ def decQrCode():
         return {"success": False, "message": "No Image Sent"}
     
     file = request.files["image"]
-    print(request.files, file.filename)
-    
+
     if file.filename == "" or not file:
         return {"success": False, "message": "No Image Sent"}
     
     decodedData = []
     
-    if file:
-        try:
-            img = Image.open(file.stream)
-            img = img.convert("RGB")
 
-            decodedQR = decode(img)
-            for item in decodedQR:
-                decodedData.append(item.data.decode('ascii'))
-        except Exception as e:
-            print(str(e))
+    try:
+        img = Image.open(file.stream)
+        img = img.convert("RGB")
+
+        decodedQR = decode(img)
+        for item in decodedQR:
+            decodedData.append(item.data.decode('ascii'))
+    except Exception as e:
+        print(str(e))
     
     if (len(decodedData) == 0):
         return {"success": False, "message": "No QR Code Found!"}
@@ -178,7 +177,85 @@ def ipLookup():
 
     return {"success": True, "data": formattedData}
 
+# Compress Image
+@app.route("/image/compress", methods=["POST"])
+def compressImage():
+    if "image" not in request.files:
+        return {"success": False, "message": "No Image Sent"}
+    
+    file = request.files["image"]
+    
+    if not file:
+        return {"success": False, "message": "No Image Sent"}
+    
+    size = request.form.get("size", 50)
+    quality = request.form.get("quality", 50)
 
+    try:
+        size = float(size)
+    except Exception as e:
+        size = 50
+
+    try:
+        quality = int(quality)
+    except Exception as e:
+        quality = 50
+    
+    image_io = None
+    
+
+    try:
+        image = Image.open(file.stream)
+        image = image.convert("RGB")
+        file_extension = file.filename.split('.')[-1].lower()
+
+        # Determine the format based on the extension if image.format is None
+        if image.format is None:
+            if file_extension in ['jpg', 'jpeg']:
+                original_format = 'JPEG'
+            else:
+                original_format = file_extension.upper()
+        else:
+            original_format = image.format
+
+        width, height = image.size
+        new_size = (int(width * (size / 100)), int(height * (size / 100)))
+        resized_image = image.resize(new_size)
+
+        img_io = io.BytesIO()
+
+        if original_format in ['JPEG', 'JPG']:
+            resized_image.save(img_io, format=original_format, optimize=True, quality=quality)
+        else:
+            resized_image.save(img_io, format=original_format)
+
+        img_io.seek(0)
+        image_io = img_io
+    except Exception as e:
+        print(str(e))
+    
+    if (image_io is None):
+        return {"success": False, "message": "Failed to Shrink image"}
+    
+    return send_file(image_io, mimetype=f'image/{original_format.lower()}')
+
+
+
+
+@app.route("/test", methods=["GET", "POST"])
+def test():
+        # Create a new image using PIL
+    img = Image.new('RGB', (200, 100), color = (73, 109, 137))
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), "Hello, World!", fill=(255, 255, 0))
+
+    # Save the image to a BytesIO object
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    # Use send_file to return the image
+    return send_file(img_io, mimetype='image/png')
 
 
 if (__name__ == "__main__"):
