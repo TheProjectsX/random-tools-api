@@ -6,6 +6,7 @@ import io
 import base64
 from PIL import Image
 import json
+import geocoder
 
 
 app = Flask(__name__)
@@ -152,6 +153,30 @@ def jsonFormatter():
     
     return {"success": True, "json": formattedData}
 
+# IP Lookup
+@app.route("/ip-lookup", methods=["POST"])
+def ipLookup():
+    ip = request.json.get("ip")
+    if (ip is None):
+        return {"success": False, "message": "No IP Provided"}
+
+    ipDetails = None
+    try:
+        ipDetails = geocoder.ip(ip)
+    except Exception as e:
+        print(str(e))
+    
+    if (ipDetails is None):
+        return {"success": False, "message": "Failed to get IP Info"}
+    elif (not ipDetails.ok):
+        return {"success": False, "message": "Failed to get IP Info"}
+
+    formattedData = ipDetails.geojson.get("features", {})[0].get("properties", {}).get("raw", {})
+    del formattedData["readme"]
+    formattedData["lat"] = ipDetails.geojson.get("features", {})[0].get("properties", {}).get("lat")
+    formattedData["long"] = ipDetails.geojson.get("features", {})[0].get("properties", {}).get("lng")
+
+    return {"success": True, "data": formattedData}
 
 
 
