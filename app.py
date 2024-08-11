@@ -1,9 +1,11 @@
 from flask import Flask, request
 import requests
 import qrcode
+from pyzbar.pyzbar import decode
 import io
 import base64
 from PIL import Image
+
 
 app = Flask(__name__)
 
@@ -88,7 +90,34 @@ def genQrCode():
         print(str(e))
         return {"success": False, "message": "Some error Occurred"}
 
+@app.route("/qrcode/decode", methods=["POST"])
+def decQrCode():
+    if "image" not in request.files:
+        return {"success": False, "message": "No Image Sent"}
+    
+    file = request.files["image"]
+    print(request.files, file.filename)
+    
+    if file.filename == "" or not file:
+        return {"success": False, "message": "No Image Sent"}
+    
+    decodedData = []
+    
+    if file:
+        try:
+            img = Image.open(file.stream)
+            img = img.convert("RGB")
 
+            decodedQR = decode(img)
+            for item in decodedQR:
+                decodedData.append(item.data.decode('ascii'))
+        except Exception as e:
+            print(str(e))
+    
+    if (len(decodedData) == 0):
+        return {"success": False, "message": "No QR Code Found!"}
+    
+    return {"success": True, "data": decodedData}
 
 if (__name__ == "__main__"):
     app.run(debug=True)
