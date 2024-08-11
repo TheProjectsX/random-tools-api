@@ -7,9 +7,12 @@ import base64
 from PIL import Image, ImageDraw
 import json
 import geocoder
+from dotenv import load_dotenv
+import os
 
-
+load_dotenv()
 app = Flask(__name__)
+app.config["OPENWEATHER_APIKEY"] = os.getenv("OPENWEATHER_APIKEY")
 
 @app.route("/")
 def home():
@@ -239,6 +242,34 @@ def compressImage():
     
     return send_file(image_io, mimetype=f'image/{original_format.lower()}')
 
+# Weather
+@app.route("/weather")
+def weather():
+    place = request.args.get("place")
+    if (place is None):
+        return {"success": False, "message": "No place provided"}
+    
+    info = None
+    try:
+        response = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={place}&APPID={app.config.get('OPENWEATHER_APIKEY')}&units=metric").json()
+        info = response
+    except Exception as e:
+        print(str(e))
+    
+    if (info is None):
+        return {"success": False, "message": "Failed to get Weather Information"}
+    
+    if (info["cod"] == 200):
+        info["success"] = True
+    elif (info["cod"] == "404"):
+        info["success"] = False
+        info["message"] = "City not Found!"
+    else:
+        info["success"] = False
+        info["message"] = "Failed to get Weather information"
+    
+    del info["cod"]
+    return info
 
 
 
