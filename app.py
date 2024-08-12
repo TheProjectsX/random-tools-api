@@ -6,6 +6,7 @@ import io
 import base64
 from PIL import Image, ImageDraw
 import json
+import csv
 import geocoder
 from dotenv import load_dotenv
 import os
@@ -151,9 +152,39 @@ def jsonFormatter():
     try:
         formattedData = json.dumps(jsonData, indent=indent, separators=(separators.get("object", ","), separators.get("value", ": ")), sort_keys=sortKeys)
     except Exception as e:
+        print(str(e))
         return {"success": False, "message": "Failed to Format JSON Data"}
     
     return {"success": True, "json": formattedData}
+
+
+# CSV to JSON
+@app.route("/csv-to-json", methods=["POST"])
+def csvToJson():
+    csvData = request.json.get("csv")
+    indent = request.json.get("indent", 4)
+    separators = request.json.get("separators", {})
+    sortKeys = request.json.get("sortKeys", False)
+
+    try:
+        indent = int(indent)
+    except Exception as e:
+        indent = 4
+
+    if (csvData is None):
+        return {"success": False, "message": "No JSON Data provided"}
+    
+    formattedJsonData = None
+    try:
+        csv_file = io.StringIO(csvData)
+        reader = csv.DictReader(csv_file)
+        jsonData = list(reader)
+        formattedJsonData = json.dumps(jsonData, indent=indent, separators=(separators.get("object", ","), separators.get("value", ": ")), sort_keys=sortKeys)
+    except Exception as e:
+        return {"success": False, "message": "Failed to Format JSON Data"}
+    
+    return {"success": True, "json": formattedJsonData}
+
 
 # IP Lookup
 @app.route("/ip-lookup", methods=["POST"])
@@ -270,6 +301,7 @@ def weather():
     
     del info["cod"]
     return info
+
 
 
 
