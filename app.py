@@ -10,6 +10,8 @@ import csv
 import geocoder
 from dotenv import load_dotenv
 import os
+import langdetect
+import iso639
 
 load_dotenv()
 app = Flask(__name__)
@@ -360,6 +362,20 @@ def uploadFile():
     fileUrl = response["data"]["downloadPage"]
 
     return {"success": True, "url": fileUrl}
+
+# Detect Language
+@app.route("/detectLang", methods=["POST"])
+def detectLang():
+    text = request.json.get("text")
+    if (text is None):
+        return {"success": False, "message": "No Text Provided"}
+    
+    detected = langdetect.detect(text)
+    detected = iso639.Lang(detected)
+
+    language = detected.name
+
+    return {"success": True, "language": language}
 
 @app.route("/test", methods=["GET", "POST"])
 def test(): 
