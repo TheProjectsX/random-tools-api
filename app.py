@@ -302,11 +302,67 @@ def weather():
     del info["cod"]
     return info
 
+# Paste Text
+@app.route("/pastebin", methods=["POST"])
+def pastebin():
+    text = request.json.get("text")
+    if (text is None):
+        return {"success": False, "message": "No Text Provided"}
+   
+    headers = {
+        "Host": "snippet.host",
+        "cache-control": "max-age=0",
+        "upgrade-insecure-requests": "1",
+        "origin": "https://snippet.host",
+        "content-type": "multipart/form-data; boundary=----WebKitFormBoundaryBiX583G3giu5SXUS",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+        "sec-gpc": "1",
+        "sec-fetch-site": "same-origin",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-user": "?1",
+        "sec-fetch-dest": "document",
+        "referer": "https://snippet.host/",
+        "accept-language": "en-US,en;q=0.9",
+    }
+    
+    data = f"------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=title\r\n\r\n\r\n------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=content\r\n\r\n{text}\r\n------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=visibility\r\n\r\n2\r\n------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=expires\r\n\r\nnever\r\n------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=language\r\n\r\nplain text\r\n------WebKitFormBoundaryBiX583G3giu5SXUS\r\nContent-Disposition: form-data; name=js\r\n\r\nfalse\r\n------WebKitFormBoundaryBiX583G3giu5SXUS--\r\n"
+    
+    url = "https://snippet.host/"
+    
+    response = requests.post(url, headers=headers, data=data)
+   
+    if (response.status_code != 200) or (response.url == "https://snippet.host/"):
+        return {"success": False, "message": "Failed to Paste Text"}
+    
+    return {"success": True, "url": response.url, "raw": f"{response.url}/raw"}
 
+# Upload File
+@app.route("/uploadFile", methods=["POST"])
+def uploadFile():
+    if "file" not in request.files:
+        return {"success": False, "message": "No File Sent"}
+    
+    file = request.files["file"]
+    servers = requests.get("https://api.gofile.io/servers").json()
+    if (not servers["status"] == "ok"):
+        return {"success": False, "message": "Internal Server Error"}
 
+    server = servers["data"]["servers"][0]["name"]
+
+    files = {
+    "file": (file.filename, file.stream, file.content_type),
+    }
+
+    response = requests.post(f"https://{server}.gofile.io/uploadFile", files=files).json()
+    if (not servers["status"] == "ok"):
+        return {"success": False, "message": "Internal Server Error"}
+
+    fileUrl = response["data"]["downloadPage"]
+
+    return {"success": True, "url": fileUrl}
 
 @app.route("/test", methods=["GET", "POST"])
-def test():
+def test(): 
         # Create a new image using PIL
     img = Image.new('RGB', (200, 100), color = (73, 109, 137))
     d = ImageDraw.Draw(img)
